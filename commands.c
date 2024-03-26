@@ -1,8 +1,8 @@
-#include "commands.h"
 #include <stdio.h>
 #include <stdlib.h>
 #include <unistd.h>
 #include <sys/wait.h>
+#include "commands.h"
 
 void execute_rm(char *filename){
 	if(remove(filename) != 0){

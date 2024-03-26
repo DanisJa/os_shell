@@ -2,11 +2,11 @@
 #define COMMANDS_H
 
 enum Command{
-	RM,
-	CAT,
-	CLEAR,
-	COWSAYY,
-	INVALID_COMMAND
+	execute_rm,
+	execute_cat,
+	execute_clear,
+	execute_cowsay,
+	invalid_command
 };
 
 #endif
