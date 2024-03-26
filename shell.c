@@ -6,10 +6,10 @@
 #include "commands.h"
 
 #define MAX_COMMAND_LENGTH	1024
-#define MAX_ARGS		64
+#define MAX_ARGS		64 // for future implementation of n args
 
 int main(){
-	int should_run = 1;
+	int should_run = 1; // just send interrupt signal for now (or maybe forever)
 	char command[MAX_COMMAND_LENGTH];
 	char *args[MAX_ARGS];
 	
