@@ -1,12 +1,9 @@
 #ifndef COMMANDS_H
 #define COMMANDS_H
 
-enum Command{
-	execute_rm,
-	execute_cat,
-	execute_clear,
-	execute_cowsay,
-	invalid_command
-};
+void execute_rm(char *filename);
+void execute_cat(char *filename);
+void execute_clear();
+void execute_cowsay(char *message);
 
 #endif
