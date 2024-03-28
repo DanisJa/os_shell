@@ -44,3 +44,9 @@ void execute_cowsay(char *message)
 	printf("                ||----w |\n");
 	printf("                ||     ||\n");
 }
+
+void execute_pwd()
+{
+	char cwd[1024]; // max path length is 256 on windows, not sure about unix/linux systems, but 1024 has a reasonable safety margin
+	printf("%s\n", getcwd(cwd, sizeof(cwd)));
+}

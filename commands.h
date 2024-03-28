@@ -5,5 +5,6 @@ void execute_rm(char *filename);
 void execute_cat(char *filename);
 void execute_clear();
 void execute_cowsay(char *message);
+void execute_pwd();
 
 #endif
