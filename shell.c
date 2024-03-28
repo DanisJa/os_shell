@@ -6,158 +6,137 @@
 #include "commands.h"
 
 #define MAX_COMMAND_LENGTH 1024
-#define MAX_ARGS 64 // for future implementation of n args
+#define MAX_ARGS 64
+
+void execute_command(char *command, char **args)
+{
+	if (strcmp(command, "rm") == 0)
+	{
+		if (!args[0])
+		{
+			fprintf(stderr, "Usage: rm <filename>\n");
+			exit(EXIT_FAILURE);
+		}
+		execute_rm(args[0]);
+	}
+	else if (strcmp(command, "cat") == 0)
+	{
+		if (!args[0])
+		{
+			fprintf(stderr, "Usage: cat <filename>\n");
+			exit(EXIT_FAILURE);
+		}
+		execute_cat(args[0]);
+	}
+	else if (strcmp(command, "clear") == 0)
+	{
+		execute_clear();
+	}
+	else if (strcmp(command, "cowsay") == 0)
+	{
+		if (!args[0])
+		{
+			fprintf(stderr, "Usage: cowsay <message>\n");
+			exit(EXIT_FAILURE);
+		}
+		execute_cowsay(args[0]);
+	}
+	else if (strcmp(command, "pwd") == 0)
+	{
+		system("pwd");
+	}
+	else
+	{
+		fprintf(stderr, "Unknown command: %s\n", command);
+		exit(EXIT_FAILURE);
+	}
+}
 
 int main()
 {
-	int should_run = 1; // just send interrupt signal for now (or maybe forever)
 	char command[MAX_COMMAND_LENGTH];
 	char *args[MAX_ARGS];
 
-	while (should_run)
+	while (1)
 	{
-		// prompt display
 		char machinename[1024];
-
-		if (gethostname(machinename, sizeof(machinename)) != 0)
+		if (gethostname(machinename, sizeof(machinename)) != 0 || !getlogin())
 		{
-			perror("gethostname");
+			perror("Failed to get hostname or login");
 			exit(EXIT_FAILURE);
 		}
+		printf("%s@%s: ~$ ", machinename, getlogin());
 
-		char *username = getlogin();
-		if (username == NULL)
-		{
-			perror("getlogin");
-			exit(EXIT_FAILURE);
-		}
-
-		printf("%s@%s: ~$ ", machinename, username);
-
-		if (fgets(command, sizeof(command), stdin) == NULL)
-		{
+		if (!fgets(command, sizeof(command), stdin))
 			break;
-		}
-
 		if (command[0] == '\n')
-		{
 			continue;
-		}
 
-		// parsing the commands
-		char *token;
+		int in_pipe = 0;
 		int arg_count = 0;
-		token = strtok(command, " \n");
+		char *token = strtok(command, " \n");
 		while (token != NULL && arg_count < MAX_ARGS - 1)
 		{
-			args[arg_count] = token;
-			arg_count++;
+			if (strcmp(token, "|") == 0)
+			{
+				args[arg_count++] = NULL;
+				in_pipe = 1;
+			}
+			else
+				args[arg_count++] = token;
 			token = strtok(NULL, " \n");
 		}
 		args[arg_count] = NULL;
 
-		// checking for pipes
-		int i;
-		int num_pipes = 0;
-
-		while (token != NULL && arg_count < MAX_ARGS - 1)
+		if (in_pipe)
 		{
-			args[arg_count] = token;
-			arg_count++;
-			token = strtok(NULL, " \n");
-		}
-
-		args[arg_count] = NULL;
-
-		// calling (or throwing errors) the function for respective commands
-		if (num_pipes == 0) // NO PIPES
-		{
-			if (strcmp(args[0], "rm") == 0)
+			int pipes[2];
+			if (pipe(pipes) < 0)
 			{
-				if (arg_count < 2)
-				{
-					fprintf(stderr, "Usage: rm <filename>>\n");
-				}
-				else
-				{
-					execute_rm(args[1]);
-				}
+				perror("Pipe failed");
+				exit(EXIT_FAILURE);
 			}
-			else if (strcmp(args[0], "cat") == 0)
+			pid_t child_pid = fork();
+			if (child_pid < 0)
 			{
-				if (arg_count < 2)
-				{
-					fprintf(stderr, "Usage: cat <filename>\n");
-				}
-				else
-				{
-					execute_cat(args[1]);
-				}
+				perror("Fork failed");
+				exit(EXIT_FAILURE);
 			}
-			else if (strcmp(args[0], "clear") == 0)
+			else if (child_pid == 0)
 			{
-				execute_clear();
+				close(pipes[0]);								// Close read end of the pipe
+				dup2(pipes[1], STDOUT_FILENO);	// Redirect stdout to the write end of the pipe
+				close(pipes[1]);								// Close the write end of the pipe
+				execute_command(args[0], args); // Execute the command
+				exit(EXIT_SUCCESS);
 			}
-			else if (strcmp(args[0], "cowsay") == 0)
+			else
 			{
-				if (arg_count < 2)
-				{
-					fprintf(stderr, "Usage: cowsay <message>\n");
-				}
-				else
-				{
-					execute_cowsay(args[1]);
-				}
+				close(pipes[1]);							// Close the write end of the pipe
+				dup2(pipes[0], STDIN_FILENO); // Redirect stdin to the read end of the pipe
+				close(pipes[0]);							// Close the read end of the pipe
+				wait(NULL);										// Wait for the child process to finish
 			}
 		}
 		else
-		{ // piping
-			int pipes[2];
-			int prev_pipe_read = STDIN_FILENO;
-
-			for (i = 0; i < num_pipes; i++)
+		{
+			pid_t child_pid = fork();
+			if (child_pid < 0)
 			{
-				pipe(pipes);
-				pid_t childp = fork();
-
-				if (childp < 0)
-				{
-					perror("fork failed");
-					exit(EXIT_FAILURE);
-				}
-				else if (childp == 0) // child process goes here
-				{
-					close(pipes[0]); // closing unused end
-
-					if (i < num_pipes)
-					{
-						if (dup2(pipes[1], STDOUT_FILENO) < 0)
-						{
-							perror("dup2 fail");
-							exit(EXIT_FAILURE);
-						}
-					}
-
-					if (dup2(prev_pipe_read, STDIN_FILENO) < 0)
-					{
-						perror("dup2 fail");
-						exit(EXIT_FAILURE);
-					}
-
-					close(prev_pipe_read);
-					close(pipes[1]);
-
-					execvp(args[i * 2], args + (i * 2));
-					perror("execvp");
-					exit(EXIT_FAILURE);
-				}
-				else
-				{
-					close(pipes[1]);					 // close unused write end of pipe
-					wait(NULL);								 // wait for child to end
-					prev_pipe_read = pipes[0]; // next command reads from this
-				}
+				perror("Fork failed");
+				exit(EXIT_FAILURE);
+			}
+			else if (child_pid == 0)
+			{
+				execute_command(args[0], args + 1); // Execute the command
+				exit(EXIT_SUCCESS);
+			}
+			else
+			{
+				wait(NULL); // Wait for the child process to finish
 			}
 		}
 	}
+
+	return 0;
 }
