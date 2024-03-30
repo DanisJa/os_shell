@@ -61,33 +61,38 @@ int main() {
         args[arg_count] = NULL;
 
         // Executing command with(out) pipe
-//        if (in_pipe) {
-//            printf("in pipe");
-//            if (pipe(pipes) < 0) {
-//                perror("Pipe failed");
-//                exit(EXIT_FAILURE);
-//            }
-//            pid_t child_pid = fork();
-//            if (child_pid < 0) {
-//                perror("Fork failed");
-//                exit(EXIT_FAILURE);
-//            } else if (child_pid == 0) {
-//                close(pipes[0]);                             // close read end of the pipe
-//                dup2(pipes[1], STDOUT_FILENO); // redirect stdout to the write end of the pipe
-//                close(pipes[1]);                             // close the write end of the pipe
-//                execute_command(args[0], args);
-//                printf("%s %s\n", args[0], args[1]);
-//            } else {
-//                close(pipes[1]);                            // close the write end of the pipe
-//                dup2(pipes[0], STDIN_FILENO); // redirect stdin to the read end of the pipe
-//                close(pipes[0]);                            // close the read end of the pipe
-//
-//                execute_command(args[arg_count + 1], args + arg_count + 2);
-//                wait(NULL); // wait for the child process to finish
-//            }
-//        }
-////             Executing command with fork() without piping
-//        else {
+        // Executing command with(out) pipe
+        if (in_pipe) {
+            printf("in pipe");
+            if (pipe(pipes) < 0) {
+                perror("Pipe failed");
+                exit(EXIT_FAILURE);
+            }
+            pid_t child_pid = fork();
+            if (child_pid < 0) {
+                perror("Fork failed");
+                exit(EXIT_FAILURE);
+            } else if (child_pid == 0) {
+                close(pipes[0]);                             // close read end of the pipe
+                dup2(pipes[1], STDOUT_FILENO); // redirect stdout to the write end of the pipe
+                close(pipes[1]);                             // close the write end of the pipe
+                execute_command(args[0], args);
+                printf("%s %s\n", args[0], args[1]);
+            } else {
+                close(pipes[1]);                            // close the write end of the pipe
+                dup2(pipes[0], STDIN_FILENO); // redirect stdin to the read end of the pipe
+                close(pipes[0]);                            // close the read end of the pipe
+
+                if (args[arg_count + 1] != NULL && args[arg_count + 1][0] != '\0') {
+                    execute_command(args[arg_count + 1], args + arg_count + 2);
+                }
+                wait(NULL);
+                exit(EXIT_SUCCESS); // exit after executing the command
+            }
+        }
+
+//             Executing command with fork() without piping
+        else {
             pid_t child_pid = fork();
             if (child_pid < 0) {
                 perror("Fork failed");
@@ -99,7 +104,7 @@ int main() {
                 wait(NULL);
             }
         }
-//    }
+    }
     return 0;
 }
 
