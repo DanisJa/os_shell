@@ -14,4 +14,5 @@ commands.o: commands.c commands.h
 
 clean: 
 	rm -f *.o shell
+	clear
 
